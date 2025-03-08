@@ -12,7 +12,7 @@
 File recordingFile; // SDカードに書き込む用のファイル変数
 
 //APIキーの定義
-const char* GOOGLE_API_KEY = "AIzaSyCabQVHoAQpP0u-5REAFjt8hwAlV9sIA0A";
+char *api_key = getenv("GOOGLE_API_KEY");
 //バケット名
 const char* bucketName = "dcon_bucket";
 //レコーディングファイル名
