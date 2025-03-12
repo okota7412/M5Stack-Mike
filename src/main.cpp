@@ -9,6 +9,7 @@
 #include "CUF_24px.h"
 #include <iostream>
 #include <string>
+#include <API.h>
 
 //=============================
 //  リングバッファ関連
@@ -36,6 +37,10 @@ bool btnC = false; //グローバルボタン検知変数
 // OpenAI Whisper APIのホストとポート
 const char* host = "api.openai.com";
 const int httpsPort = 443;
+
+//ふっきーAPI関係
+MyApi api;  // `MyApi` クラスのインスタンスを作成
+String token = "";
 
 // レコーディングファイル名
 const char* fileName = "recording.wav";
@@ -65,6 +70,7 @@ std::string displayTranscription(const std::string& response);
 void writeWavHeader(File file, int sampleRate, int bitsPerSample, int numChannels);
 void updateWavHeader(File file);
 void CtranscribeAudio(int cursol);
+String getJsonValue(const String& jsonText, const String& part);
 
 //=============================
 //  タスク 0 (録音・書き込み用)
@@ -273,6 +279,28 @@ void setup() {
   // Task作成
   xTaskCreatePinnedToCore(task0, "Task0", 16384, NULL, 2, NULL, 1);
   xTaskCreatePinnedToCore(task1, "Task1", 16384, NULL, 1, NULL, 1);
+
+  //API呼び出しテスト
+
+  //ログイン
+  String loginResponse = api.loginToApi("hardware-test", "password");
+  Serial.println("Login Response:");
+  Serial.println(loginResponse);
+  token = getJsonValue(loginResponse,"token");
+  //ユーザ情報ゲット
+  String userinfo = api.get_Me(token);
+  Serial.println("userinfo:");
+  Serial.println(userinfo);
+  //テナントゲット
+  String tenantsResponse = api.get_Tenants(token);
+  Serial.println("Tenants Response:");
+  Serial.println(tenantsResponse);
+  //スレッド一覧ゲット
+  String threads = api.get_Chats(token);
+  Serial.println("Chats:");
+  Serial.println(threads);
+
+
 }
 
 void loop() {
@@ -544,3 +572,30 @@ void CtranscribeAudio(int cursol) {
   Serial.println(text);
   M5.Lcd.drawString(text, 0, cursol, 1);
 }
+
+
+//JSONから任意のパーツを取り出す
+String getJsonValue(const String& jsonText, const String& part) {
+  // 1) JSON解析用のドキュメントを用意（バッファサイズ 1024）
+  DynamicJsonDocument doc(1024);
+
+  // 2) JSON文字列をdocにパース
+  DeserializationError error = deserializeJson(doc, jsonText);
+  if (error) {
+    // パース失敗時はログを出して空文字を返す
+    Serial.println("[Error] Failed to parse JSON");
+    return "";
+  }
+
+  // 3) doc[part] から値を取得
+  //    ここで .as<String>() を使って Arduino String に変換
+  if (doc[part].isNull()) {
+    // 指定したキーがJSONに含まれていない場合も空文字を返す
+    return "";
+  }
+
+  // キーが存在すれば文字列として取得
+  String value = doc[part].as<String>();
+  return value;
+}
+
